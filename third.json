@@ -1,0 +1,366 @@
+{
+  "name": "AI Resume Screener",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Job Application",
+        "formDescription": "Please fill out your details below and upload your resume to apply.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "fullName",
+              "placeholder": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "email",
+              "fieldType": "email",
+              "placeholder": "Email ",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "resume_file",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "jobTitle",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Data Analyst"
+                  },
+                  {
+                    "option": "Software engineer"
+                  },
+                  {
+                    "option": "UI/UX"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -544,
+        96
+      ],
+      "id": "48da0ea9-12ed-4a35-9eaa-1204753a36c4",
+      "name": "On form submission",
+      "webhookId": "9cf7cb90-9d95-460c-b402-f89d8f6bc5fc"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a highly critical and meticulous senior technical recruiter. Your task is to perform a strict, quantitative analysis of a candidate's resume against a job description. Your response must be ONLY a valid JSON object.\n\n**Scoring Rules:**\n1. Start the candidate's score at a perfect 10.\n2. Create a mental checklist of every single requirement, skill, and qualification mentioned in the Job Description (e.g., \"Experience with Python\", \"knowledge of SQL\", \"Bachelor's degree\").\n3. For each specific requirement from your checklist that is NOT explicitly and clearly present in the Candidate's Resume, deduct 1 point from the score.\n4. Do not infer skills. If the Job Description requires \"Tableau\" and the resume does not explicitly mention \"Tableau\", the candidate does not have the skill.\n5. A score of 10 is reserved ONLY for candidates whose resume explicitly matches every single requirement from the job description. If even one minor requirement is missing, the score cannot be 10.\n\n**Job Description:**\n{{$json.JobDescription}}\n\n**Candidate Resume Text:**\n{{$node[\"Extract from File\"].json.text}}\n\n**Output Instructions:**\nBased on your analysis, return a single, raw JSON object with the following keys:\n- \"summary\": A brief justification for the score, explicitly stating key met and missing requirements.\n- \"score\": The final calculated score after all deductions.\n- \"status\": The status must be \"Qualified\" if the final score is 7 or higher. Otherwise, the status is \"Unqualified\"."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        352,
+        192
+      ],
+      "id": "bd159f02-bbf5-40ab-9e86-2f4fab1d16c4",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "yeMXARKAQW26fhgu",
+          "name": "My Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "resume_file",
+        "name": "={{ $json.fullName }}_Resume.pdf",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1MrPE09WmGJ39sjpLPyN4WQpqxex-SfsM",
+          "mode": "list",
+          "cachedResultName": "New Resumes",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1MrPE09WmGJ39sjpLPyN4WQpqxex-SfsM"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -320,
+        0
+      ],
+      "id": "beb9498e-2fad-4858-bbd9-63b6ef6d2952",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YZBdnlyRJ9EnqvXT",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g",
+          "mode": "list",
+          "cachedResultName": "AI Screening Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1129904295,
+          "mode": "list",
+          "cachedResultName": "Screening Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g/edit#gid=1129904295"
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Date",
+              "fieldValue": "={{ $now.toFormat(\"yyyy-MM-dd HH:mm\") }}"
+            },
+            {
+              "fieldId": "FileName",
+              "fieldValue": "={{ $('On form submission').item.json.resume_file[0].filename }}"
+            },
+            {
+              "fieldId": "Score",
+              "fieldValue": "={{ $json.score }}"
+            },
+            {
+              "fieldId": "Status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "Summary",
+              "fieldValue": "={{ $json.summary }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Log to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [
+        928,
+        192
+      ],
+      "id": "c3d44b43-43f0-4fc9-9d69-525fc7d6f593",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nrsLwsX3khrdblIB",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.JobTitle}}",
+              "value2": "={{ $('On form submission').item.json.jobTitle }}"
+            }
+          ]
+        }
+      },
+      "name": "Filter JDs",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        128,
+        192
+      ],
+      "id": "9f6facdc-4de9-44b9-97f6-086af97ed1e5"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g",
+          "mode": "list",
+          "cachedResultName": "AI Screening Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Job Postings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IJw8zcQo5FdDIydfGVQAOo86XyDWzPh2qxHAF0ujc9g/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "JobTitle",
+              "lookupValue": "={{ $('On form submission').item.json.jobTitle }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get All JDs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [
+        -96,
+        192
+      ],
+      "id": "1c4ff011-c902-496c-b8b9-131f35db42c5",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nrsLwsX3khrdblIB",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "resume_file",
+        "options": {}
+      },
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        192
+      ],
+      "id": "53b1f8e6-e1df-44b2-8fb1-7a2d61699e2d"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.parse($json.content.parts[0].text) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        192
+      ],
+      "id": "296d2436-67df-477d-b91b-c9ff7e7aebc3",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Filter JDs": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All JDs": {
+      "main": [
+        [
+          {
+            "node": "Filter JDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Get All JDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b5f87e1b-3d7e-4127-8f92-b71a138e85d1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f01af1f69db79f8ad08a012f71632fab7dd82f0c9e7db5c1d1b362f875b58b3e"
+  },
+  "id": "mlRNXOYL77OiVE7H",
+  "tags": []
+}
